@@ -1,0 +1,5 @@
+[
+    { "caption": "-", "id": "yamllint-separator" },
+    { "caption": "YAMLLint: Lint File", "command": "yamllint_lint" },
+    { "caption": "YAMLLint: Fix File", "command": "yamllint_fix" }
+]

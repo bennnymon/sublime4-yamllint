@@ -1,0 +1,12 @@
+[
+    {
+        "keys": ["super+alt+y"],
+        "command": "yamllint_lint",
+        "context": [{ "key": "selector", "operator": "equal", "operand": "source.yaml" }]
+    },
+    {
+        "keys": ["super+alt+shift+y"],
+        "command": "yamllint_fix",
+        "context": [{ "key": "selector", "operator": "equal", "operand": "source.yaml" }]
+    }
+]

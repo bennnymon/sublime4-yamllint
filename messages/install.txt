@@ -1,0 +1,21 @@
+YAMLLint
+========
+
+Thanks for installing YAMLLint!
+
+Requirements (install once via pip):
+
+    pip install yamllint yamlfix
+
+Quick start:
+  - Open a .yml/.yaml file — it's linted automatically on load and save.
+  - Command Palette: "YAMLLint: Lint Current File" / "YAMLLint: Fix Current File (yamlfix)"
+  - Menu: Tools > YAMLLint
+  - Keybinding: Cmd+Alt+Y to lint, Cmd+Alt+Shift+Y to fix (Ctrl+Alt+Y / Ctrl+Alt+Shift+Y on Windows/Linux)
+
+If yamllint/yamlfix aren't found automatically (common on macOS, where GUI
+apps don't inherit your shell PATH), set "yamllint_path" / "yamlfix_path"
+in Preferences > Package Settings > YAMLLint > Settings to the output of
+`which yamllint` / `which yamlfix`.
+
+See README.md in the package folder for full documentation.

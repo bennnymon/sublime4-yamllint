@@ -1,0 +1,16 @@
+[
+    { "caption": "YAMLLint: Lint Current File", "command": "yamllint_lint" },
+    { "caption": "YAMLLint: Fix Current File (yamlfix)", "command": "yamllint_fix" },
+    { "caption": "YAMLLint: Clear Results", "command": "yamllint_clear" },
+    { "caption": "YAMLLint: Show Output Panel", "command": "yamllint_show_panel" },
+    { "caption": "YAMLLint: Go to Next Issue", "command": "yamllint_goto_next_issue" },
+    { "caption": "YAMLLint: Go to Previous Issue", "command": "yamllint_goto_prev_issue" },
+    {
+        "caption": "Preferences: YAMLLint Settings",
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/YamlLint/yamllint.sublime-settings",
+            "default": "// YAMLLint Settings — User\n{\n\t$0\n}\n"
+        }
+    }
+]

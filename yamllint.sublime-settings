@@ -1,0 +1,74 @@
+{
+    // Path to the yamllint executable. Leave empty to search PATH and a
+    // few common install locations (useful on macOS, where GUI apps don't
+    // always inherit your shell's PATH). Run `which yamllint` in a
+    // terminal to find the correct value.
+    "yamllint_path": "",
+
+    // Path to the yamlfix executable, used by "YAMLLint: Fix Current File".
+    // Leave empty to search PATH the same way as yamllint_path.
+    "yamlfix_path": "",
+
+    // Path to a yamllint config file, passed to yamllint via -c and to
+    // yamlfix via --config-file. Leave empty to let yamllint auto-discover
+    // .yamllint / .yamllint.yaml / .yamllint.yml next to the file, or fall
+    // back to yamllint's built-in "default" ruleset.
+    "config_file": "",
+
+    // Inline yamllint config overrides passed via -d when no config_file
+    // is set, e.g. "{extends: relaxed, rules: {line-length: {max: 120}}}"
+    "config_data": "",
+
+    // Extra command line arguments appended to the yamllint invocation.
+    "extra_args": [],
+
+    // Optional separate config file for yamlfix (overrides config_file for
+    // the fix command only). yamlfix uses its own config format (TOML) if
+    // this isn't a yamllint-style file it understands.
+    "yamlfix_config_file": "",
+
+    // Extra command line arguments appended to the yamlfix invocation.
+    "yamlfix_extra_args": [],
+
+    // Raw tab characters make YAML unparsable and cause yamlfix (and
+    // yamllint) to report a syntax error instead of any style rule, which
+    // is the most common reason auto-fix appears to "do nothing". When
+    // true, tabs are converted to spaces before yamlfix runs.
+    "yamlfix_expand_tabs": true,
+
+    // Tab width (in spaces) used by yamlfix_expand_tabs.
+    "yamlfix_tab_width": 2,
+
+    // Run yamllint automatically whenever a YAML file is saved.
+    "lint_on_save": true,
+
+    // Run yamlfix automatically whenever a YAML file is saved, applying
+    // any style fixes to the buffer and re-saving the file. Off by
+    // default — this rewrites your file on every save. Real syntax
+    // errors (invalid YAML, not just style) still can't be auto-fixed;
+    // on those, save proceeds normally and a status bar message points
+    // to the 'yamllint' output panel instead of popping a dialog.
+    "fix_on_save": false,
+
+    // Run yamllint automatically whenever a YAML file is opened.
+    "lint_on_load": true,
+
+    // Run yamllint while typing (debounced). Can be slow on large files.
+    "lint_on_modify": false,
+
+    // Debounce delay in milliseconds used for lint_on_modify.
+    "lint_on_modify_delay": 800,
+
+    // Show inline phantom messages below problem lines.
+    "show_phantoms": true,
+
+    // Show gutter icons next to problem lines.
+    "show_gutter_icons": true,
+
+    // Automatically open the yamllint output panel when problems are found.
+    "show_panel_on_issues": false,
+
+    // File name patterns (fnmatch-style) treated as YAML files in addition
+    // to Sublime's own YAML syntax detection.
+    "file_patterns": ["*.yml", "*.yaml"]
+}
