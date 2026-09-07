@@ -118,6 +118,7 @@ inline docs):
 | `yamlfix_config_file` | Config file used only for the fix command (overrides `config_file`). |
 | `yamlfix_extra_args` | Extra CLI args appended to the `yamlfix` call. |
 | `yamlfix_expand_tabs` / `yamlfix_tab_width` | Convert tabs to spaces before fixing (default `true` / `2`) — raw tabs make YAML unparsable. |
+| `yamlfix_restore_top_level_spacing` | Reinsert a blank line between top-level entries after fixing, since yamlfix strips all blank lines (default `false`). See below. |
 | `fix_on_save` | Run yamlfix automatically on save and re-save the result (default `false`). See below. |
 | `lint_on_save` | Lint automatically on save (default `true`). |
 | `lint_on_load` | Lint automatically on open (default `true`). |
@@ -127,6 +128,50 @@ inline docs):
 | `show_gutter_icons` | Show gutter icons (default `true`). |
 | `show_panel_on_issues` | Auto-open the output panel when issues are found. |
 | `file_patterns` | Extra filename patterns treated as YAML. |
+
+### Restoring blank-line spacing after fixing
+
+`yamlfix` strips **every** blank line in the file when it rewrites it —
+not just excess ones, all of them, including the blank lines you put
+between top-level entries on purpose (e.g. between plays in a playbook,
+or between top-level keys) for readability:
+
+```yaml
+# before                        # after yamlfix, unmodified
+- name: First play               - name: First play
+  hosts: all                       hosts: all
+                                    tasks:
+  tasks:                             - name: Task one
+    - name: Task one                     ...
+      ...                         - name: Second play
+                                    hosts: all
+- name: Second play
+  hosts: all
+```
+
+Set `"yamlfix_restore_top_level_spacing": true` to have the fix command
+reinsert exactly one blank line before each top-level entry that follows
+nested content, restoring that separation:
+
+```yaml
+- name: First play
+  hosts: all
+  tasks:
+    - name: Task one
+      ...
+
+- name: Second play
+  hosts: all
+```
+
+This is scoped to **top-level** breaks on purpose — after a rewrite,
+those are the only blank-line positions that can be reconstructed
+reliably, since `yamlfix` never reorders or merges top-level entries.
+Blank lines nested *inside* an entry (e.g. between two keys of the same
+play) are not restored; there's no safe, general way to know where they
+"belonged" once the surrounding lines have been reformatted. A run of
+column-0 lines is also left alone — e.g. a leading comment directly above
+the item it describes won't get split apart from it.
 
 ### Fixing automatically on save
 

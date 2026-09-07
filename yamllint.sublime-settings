@@ -39,6 +39,16 @@
     // Tab width (in spaces) used by yamlfix_expand_tabs.
     "yamlfix_tab_width": 2,
 
+    // yamlfix strips every blank line in the file when it rewrites it,
+    // including the ones separating top-level entries (e.g. between
+    // plays in a playbook, or between top-level keys). When true, the
+    // fix command reinserts exactly one blank line before each
+    // top-level entry that follows nested content, restoring that
+    // structural spacing. Nested blank lines (e.g. between two keys
+    // inside the same entry) are not restored — only top-level breaks
+    // can be reconstructed reliably after a rewrite.
+    "yamlfix_restore_top_level_spacing": false,
+
     // Run yamllint automatically whenever a YAML file is saved.
     "lint_on_save": true,
 

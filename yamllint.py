@@ -38,6 +38,43 @@ _phantom_sets = {}
 _modify_timers = {}
 _skip_next_fix_on_save = set()
 
+DOC_MARKER_RE = re.compile(r'^(---|\.\.\.)\s*(#.*)?$')
+
+
+def add_top_level_spacing(text):
+    """yamlfix strips every blank line in the document, including the
+    ones separating top-level entries (e.g. between plays in a
+    playbook). This reinserts exactly one blank line before each
+    top-level line (column 0) that immediately follows nested content —
+    the only place blank-line intent survives a rewrite unambiguously.
+
+    It only fires on a nested-to-column-0 transition, so a run of
+    column-0 lines (a leading comment followed by the item it
+    describes, or a genuinely flat top-level mapping with no nesting)
+    is left untouched, and document markers (---/...) never get a
+    blank line forced in front of them.
+    """
+    lines = text.split("\n")
+    out = []
+    started = False
+    prev_indented = False
+    for line in lines:
+        is_blank = line.strip() == ""
+        is_top_level = (not is_blank) and not line[:1].isspace()
+        is_marker = bool(DOC_MARKER_RE.match(line))
+
+        if is_top_level and not is_marker and started and prev_indented:
+            if out and out[-1].strip() != "":
+                out.append("")
+
+        out.append(line)
+
+        if not is_blank:
+            started = True
+            prev_indented = line[:1].isspace()
+
+    return "\n".join(out)
+
 
 def get_settings():
     return sublime.load_settings(SETTINGS_FILE)
@@ -522,6 +559,9 @@ class YamllintFixCommand(sublime_plugin.TextCommand):
             return
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        if settings.get("yamlfix_restore_top_level_spacing", False):
+            fixed = add_top_level_spacing(fixed)
 
         if fixed == original_content:
             if not quiet:
