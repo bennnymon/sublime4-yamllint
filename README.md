@@ -112,12 +112,12 @@ inline docs):
 |---|---|
 | `yamllint_path` | Explicit path to the `yamllint` executable. |
 | `yamlfix_path` | Explicit path to the `yamlfix` executable. |
-| `config_file` | Path to a yamllint config (`.yamllint.yml` etc.), passed to both yamllint and yamlfix. Leave empty for yamllint's own auto-discovery. |
+| `config_file` | Path to a yamllint config (`.yamllint.yml` etc.), passed to yamllint only. Leave empty for yamllint's own auto-discovery. |
 | `config_data` | Inline yamllint config overrides (`-d`), used when `config_file` is empty. |
 | `extra_args` | Extra CLI args appended to the `yamllint` call. |
-| `yamlfix_config_file` | Config file used only for the fix command (overrides `config_file`). |
+| `yamlfix_config_file` | yamlfix's own config file (e.g. a `pyproject.toml` with `[tool.yamlfix]`), used only by the fix command. Not a yamllint config — yamlfix can't read those. |
 | `yamlfix_extra_args` | Extra CLI args appended to the `yamlfix` call. |
-| `yamlfix_expand_tabs` / `yamlfix_tab_width` | Convert tabs to spaces before fixing (default `true` / `2`) — raw tabs make YAML unparsable. |
+| `yamlfix_expand_tabs` / `yamlfix_tab_width` | Convert indentation tabs to spaces before fixing; tabs inside values are left alone (default `true` / `2`) — raw tabs make YAML unparsable. |
 | `yamlfix_restore_top_level_spacing` | Reinsert a blank line between top-level entries after fixing, since yamlfix strips all blank lines (default `false`). See below. |
 | `fix_on_save` | Run yamlfix automatically on save and re-save the result (default `false`). See below. |
 | `lint_on_save` | Lint automatically on save (default `true`). |

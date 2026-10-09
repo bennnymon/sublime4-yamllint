@@ -39,6 +39,7 @@ _modify_timers = {}
 _skip_next_fix_on_save = set()
 
 DOC_MARKER_RE = re.compile(r'^(---|\.\.\.)\s*(#.*)?$')
+LEADING_WS_RE = re.compile(r'^[ \t]+', re.MULTILINE)
 
 
 def add_top_level_spacing(text):
@@ -504,6 +505,7 @@ class YamllintFixCommand(sublime_plugin.TextCommand):
             trigger_relint(view)
             return
 
+        change_count = view.change_count()
         original_content = view.substr(sublime.Region(0, view.size()))
         original_file = view.file_name()
         suffix = os.path.splitext(original_file)[1] if original_file else ".yaml"
@@ -513,11 +515,15 @@ class YamllintFixCommand(sublime_plugin.TextCommand):
         # content, never as indentation), so yamlfix/yamllint reject them
         # with a syntax error before any style rule ever gets a chance to
         # run. This is the single most common reason "fix" appears to do
-        # nothing, so normalize tabs to spaces first unless disabled.
+        # nothing, so normalize tabs to spaces first unless disabled. Only
+        # leading indentation is touched: a tab inside a value (e.g.
+        # `k: "a<TAB>b"`) is valid YAML and must survive unchanged.
         content = original_content
         if settings.get("yamlfix_expand_tabs", True) and "\t" in content:
             tab_width = int(settings.get("yamlfix_tab_width", 2))
-            content = content.expandtabs(tab_width)
+            content = LEADING_WS_RE.sub(
+                lambda m: m.group().expandtabs(tab_width), content
+            )
 
         tmp_dir = tempfile.mkdtemp(prefix="sublime-yamllint-")
         tmp_path = os.path.join(tmp_dir, "buffer" + suffix)
@@ -527,7 +533,9 @@ class YamllintFixCommand(sublime_plugin.TextCommand):
                 fh.write(content)
 
             cmd = [exe]
-            config_file = settings.get("yamlfix_config_file", "") or settings.get("config_file", "")
+            # Never fall back to config_file: that's a yamllint config,
+            # which yamlfix can't parse (it aborts with UnsupportedConfigError).
+            config_file = settings.get("yamlfix_config_file", "")
             if config_file:
                 cmd += ["--config-file", os.path.expanduser(config_file)]
             cmd += list(settings.get("yamlfix_extra_args", []))
@@ -568,10 +576,15 @@ class YamllintFixCommand(sublime_plugin.TextCommand):
                 sublime.set_timeout(lambda: sublime.status_message("YAMLLint: already formatted, no changes"), 0)
             return
 
-        sublime.set_timeout(lambda: self.apply_fix(fixed, quiet), 0)
+        sublime.set_timeout(lambda: self.apply_fix(fixed, change_count, quiet), 0)
 
-    def apply_fix(self, fixed_content, quiet=False):
+    def apply_fix(self, fixed_content, change_count, quiet=False):
         view = self.view
+        # The buffer was edited while yamlfix ran (e.g. typing right after a
+        # fix_on_save save): applying now would silently revert those edits.
+        if view.change_count() != change_count:
+            view.set_status("yamllint", "YAMLLint: fix skipped — file changed while fixing")
+            return
         view.run_command("yamllint_replace_content", {"text": fixed_content})
         view.run_command("yamllint_lint", {"quiet": True})
         if not quiet:

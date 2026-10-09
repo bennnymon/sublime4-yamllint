@@ -9,8 +9,9 @@
     // Leave empty to search PATH the same way as yamllint_path.
     "yamlfix_path": "",
 
-    // Path to a yamllint config file, passed to yamllint via -c and to
-    // yamlfix via --config-file. Leave empty to let yamllint auto-discover
+    // Path to a yamllint config file, passed to yamllint via -c (not to
+    // yamlfix, which can't read yamllint configs — see yamlfix_config_file
+    // below). Leave empty to let yamllint auto-discover
     // .yamllint / .yamllint.yaml / .yamllint.yml next to the file, or fall
     // back to yamllint's built-in "default" ruleset.
     "config_file": "",
@@ -22,9 +23,9 @@
     // Extra command line arguments appended to the yamllint invocation.
     "extra_args": [],
 
-    // Optional separate config file for yamlfix (overrides config_file for
-    // the fix command only). yamlfix uses its own config format (TOML) if
-    // this isn't a yamllint-style file it understands.
+    // Optional config file for yamlfix, passed via --config-file. This must
+    // be a yamlfix config (e.g. a pyproject.toml with a [tool.yamlfix]
+    // section), not a yamllint config — yamlfix crashes on those.
     "yamlfix_config_file": "",
 
     // Extra command line arguments appended to the yamlfix invocation.
