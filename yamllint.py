@@ -8,6 +8,7 @@ configuration options.
 import difflib
 import fnmatch
 import html
+import itertools
 import os
 import re
 import shutil
@@ -37,6 +38,7 @@ _view_issues = {}
 _phantom_sets = {}
 _modify_timers = {}
 _skip_next_fix_on_save = set()
+_last_fix_error = {}
 
 DOC_MARKER_RE = re.compile(r'^(---|\.\.\.)\s*(#.*)?$')
 LEADING_WS_RE = re.compile(r'^[ \t]+', re.MULTILINE)
@@ -54,17 +56,30 @@ def add_top_level_spacing(text):
     describes, or a genuinely flat top-level mapping with no nesting)
     is left untouched, and document markers (---/...) never get a
     blank line forced in front of them.
+
+    A column-0 `- item` only counts as a top-level entry when the
+    document's root is a sequence (e.g. a playbook). Under a mapping
+    root it's an indentless list belonging to the key above, so no blank
+    line is forced between its items.
     """
     lines = text.split("\n")
     out = []
     started = False
     prev_indented = False
+    root_is_seq = None
     for line in lines:
         is_blank = line.strip() == ""
         is_top_level = (not is_blank) and not line[:1].isspace()
         is_marker = bool(DOC_MARKER_RE.match(line))
+        is_seq_item = line == "-" or line.startswith("- ")
 
-        if is_top_level and not is_marker and started and prev_indented:
+        if is_marker:
+            root_is_seq = None
+        elif is_top_level and root_is_seq is None and not line.startswith("#"):
+            root_is_seq = is_seq_item
+
+        if (is_top_level and not is_marker and started and prev_indented
+                and (root_is_seq or not is_seq_item)):
             if out and out[-1].strip() != "":
                 out.append("")
 
@@ -132,7 +147,6 @@ def run_process(cmd, cwd=None, input_text=None):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         startupinfo=startupinfo,
-        env=os.environ.copy(),
     )
     data = input_text.encode("utf-8") if input_text is not None else None
     stdout, stderr = proc.communicate(input=data)
@@ -235,6 +249,7 @@ class YamllintLintCommand(sublime_plugin.TextCommand):
                 )
             return
 
+        change_count = view.change_count()
         content = view.substr(sublime.Region(0, view.size()))
         file_name = view.file_name()
         cwd = os.path.dirname(file_name) if file_name else None
@@ -280,10 +295,15 @@ class YamllintLintCommand(sublime_plugin.TextCommand):
                 "rule": match.group("rule") or "",
             })
 
-        sublime.set_timeout(lambda: apply_lint_results(view, issues, stderr), 0)
+        sublime.set_timeout(lambda: apply_lint_results(view, issues, stderr, change_count), 0)
 
 
-def apply_lint_results(view, issues, stderr):
+def apply_lint_results(view, issues, stderr, change_count):
+    # Lint runs overlap (lint_on_modify, save + fix): results for text that
+    # has since been edited would mark the wrong spots, and a newer run is
+    # already covering the current text, so drop them.
+    if view.change_count() != change_count:
+        return
     _view_issues[view.id()] = issues
     settings = get_settings()
 
@@ -417,6 +437,12 @@ def update_panel(view, issues, stderr):
         lines.append("--- stderr ---")
         lines.append(stderr.strip())
 
+    fix_error = _last_fix_error.get(view.id())
+    if fix_error and fix_error[1] == view.change_count():
+        lines.append("")
+        lines.append("--- yamlfix ---")
+        lines.append(fix_error[0])
+
     write_panel(window, "\n".join(lines))
 
 
@@ -430,6 +456,7 @@ class YamllintClearCommand(sublime_plugin.TextCommand):
         clear_phantoms(view)
         view.erase_status("yamllint")
         _view_issues.pop(view.id(), None)
+        _last_fix_error.pop(view.id(), None)
         window = view.window()
         if window:
             window.destroy_output_panel(OUTPUT_PANEL_NAME)
@@ -492,17 +519,24 @@ class YamllintFixCommand(sublime_plugin.TextCommand):
     def fix_async(self, quiet=False):
         view = self.view
         report = report_error_quiet if quiet else report_error
+
+        def fail(message):
+            # The relint below rewrites the output panel; stash the error
+            # so update_panel() keeps it there instead of wiping it. It's
+            # tied to the buffer state it failed on and dropped once edited.
+            _last_fix_error[view.id()] = (message, view.change_count())
+            report(view, message)
+            trigger_relint(view)
+
         settings = get_settings()
         exe = find_executable("yamlfix", settings.get("yamlfix_path", ""))
         if not exe:
-            report(
-                view,
+            fail(
                 "YAMLLint: 'yamlfix' executable not found.\n\n"
                 "Install it with:\n    pip install yamlfix\n\n"
                 "or set \"yamlfix_path\" in Preferences > Package Settings "
                 "> YAMLLint > Settings."
             )
-            trigger_relint(view)
             return
 
         change_count = view.change_count()
@@ -545,8 +579,7 @@ class YamllintFixCommand(sublime_plugin.TextCommand):
             code, stdout, stderr = run_process(cmd, cwd=cwd)
 
             if code != 0:
-                report(
-                    view,
+                fail(
                     "yamlfix failed (exit {}):\n\n{}\n\n"
                     "Note: yamlfix can only fix formatting/style issues. "
                     "Structural problems (invalid YAML syntax, duplicate "
@@ -556,14 +589,12 @@ class YamllintFixCommand(sublime_plugin.TextCommand):
                         code, stderr.strip() or stdout.strip()
                     )
                 )
-                trigger_relint(view)
                 return
 
             with open(tmp_path, "r", encoding="utf-8") as fh:
                 fixed = fh.read()
         except Exception as exc:
-            report(view, "YAMLLint: failed to run yamlfix:\n{}".format(exc))
-            trigger_relint(view)
+            fail("YAMLLint: failed to run yamlfix:\n{}".format(exc))
             return
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -611,15 +642,14 @@ class YamllintReplaceContentCommand(sublime_plugin.TextCommand):
         new_lines = text.splitlines(keepends=True)
         matcher = difflib.SequenceMatcher(a=old_lines, b=new_lines, autojunk=False)
 
-        def line_offset(lines, idx):
-            return sum(len(l) for l in lines[:idx])
+        offsets = list(itertools.accumulate(map(len, old_lines), initial=0))
 
         delta = 0
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
             if tag == "equal":
                 continue
-            start = line_offset(old_lines, i1) + delta
-            end = line_offset(old_lines, i2) + delta
+            start = offsets[i1] + delta
+            end = offsets[i2] + delta
             replacement = "".join(new_lines[j1:j2])
             view.replace(edit, sublime.Region(start, end), replacement)
             delta += len(replacement) - (end - start)
@@ -677,6 +707,7 @@ class YamllintEventListener(sublime_plugin.EventListener):
         vid = view.id()
         _view_issues.pop(vid, None)
         _phantom_sets.pop(vid, None)
+        _last_fix_error.pop(vid, None)
         _skip_next_fix_on_save.discard(vid)
         timer = _modify_timers.pop(vid, None)
         if timer:

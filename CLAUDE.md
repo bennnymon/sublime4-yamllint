@@ -70,12 +70,13 @@ A new setting touches all of these — keep them in sync:
 - Installed copy: `~/Library/Application Support/Sublime Text/Packages/YamlLint`.
   It is a plain copy, not a symlink — edits in this repo are not live until synced:
   ```bash
-  rsync -a --delete --exclude .git --exclude CLAUDE.md ./ ~/Library/Application\ Support/Sublime\ Text/Packages/YamlLint/
+  rsync -a --delete --exclude .git --exclude CLAUDE.md --exclude tests ./ ~/Library/Application\ Support/Sublime\ Text/Packages/YamlLint/
   ```
   Sublime then reloads `yamllint.py` automatically.
-- There is no test suite. Pure helpers (e.g. `add_top_level_spacing`, `PARSABLE_RE`)
-  can be checked with a quick `python3` snippet that copies the function, since
-  `sublime`/`sublime_plugin` cannot be imported outside Sublime.
+- Tests for the pure text logic live in `tests/` (stdlib `unittest`, Sublime API
+  stubbed): `python3 -m unittest discover tests`. Add a case there when changing
+  `add_top_level_spacing`, `PARSABLE_RE` or the tab handling. Keep tests out of
+  the package root — Sublime loads every top-level `.py` as a plugin.
 - `yamllint` and `yamlfix` are installed in `~/.local/bin` for CLI testing.
 
 ## Git
